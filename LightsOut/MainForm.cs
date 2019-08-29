@@ -7,43 +7,32 @@ namespace LightsOut
     public partial class MainForm : Form
     {
         private const int GridOffset = 25;    // Distance from upper-left side of window         
-        private const int GridLength = 200;   // Size in pixels of grid         
-        private const int NumCells = 3;       // Number of cells in grid         
-        private int CellLength = GridLength / NumCells;
-        private int NumCellsOption = NumCells;  // The selected size number
-        ToolStripMenuItem selectedSizeItem;     // Selected size item from the menu
+        private const int GridLength = 200;   // Size in pixels of grid  
+        private LightsOutGame game;
 
-        private bool[,] grid;                   // Stores on/off state of cells in grid 
-        private Random rand;                    // Used to generate random numbers 
+        ToolStripMenuItem selectedSizeItem;
 
 
         public MainForm()
         {
             InitializeComponent();
-            rand = new Random();    // Initializes random number generator 
-            resizeBoard(NumCells);
 
-        }
-
-        private void GameToolStripMenuItem_Click(object sender, EventArgs e)
-        {
+            game = new LightsOutGame();
+            game.NewGame();
 
         }
 
         private void NewGameButton_Click(object sender, EventArgs e)
         {
             // Fill grid with either white or black 
-            RandomizeGrid();
+            StartNewGame();
 
         }
 
-        private void RandomizeGrid()
+        private void StartNewGame()
         {
-            // Fill grid with either white or black 
-            for (int r = 0; r < NumCellsOption; r++)
-                for (int c = 0; c < NumCellsOption; c++)
-                    grid[r, c] = rand.Next(2) == 1;
-
+            game.NewGame();
+            
             // Redraw grid
             this.Invalidate();
         }
@@ -64,18 +53,17 @@ namespace LightsOut
             Graphics g = e.Graphics;
             Control control = (Control)sender;
 
-            Int32 width = control.Size.Width;
-            CellLength = (width - (GridOffset * 3)) / NumCellsOption;
+            int CellLength =  (control.Size.Width - (GridOffset * 3)) / game.GridSize;
 
-            for (int r = 0; r < NumCellsOption; r++)
+            for (int r = 0; r < game.GridSize; r++)
             {
-                for (int c = 0; c < NumCellsOption; c++)
+                for (int c = 0; c < game.GridSize; c++)
                 {
                     // Get proper pen and brush for on/off
                     // grid section 
                     Brush brush;
                     Pen pen;
-                    if (grid[r, c])
+                    if (game.GetGridValue(r, c))
                     {
                         pen = Pens.Black;
                         brush = Brushes.White;   // On 
@@ -99,26 +87,26 @@ namespace LightsOut
 
         private void MainForm_MouseDown(object sender, MouseEventArgs e)
         {
+            Control control = (Control)sender;
+
+            int CellLength = (control.Size.Width - (GridOffset * 3)) / game.GridSize;
+
             // Make sure click was inside the grid
-            if (e.X < GridOffset || e.X > CellLength * NumCellsOption + GridOffset ||
-                e.Y < GridOffset || e.Y > CellLength * NumCellsOption + GridOffset)
+            if (e.X < GridOffset || e.X > CellLength * game.GridSize + GridOffset ||
+                e.Y < GridOffset || e.Y > CellLength * game.GridSize + GridOffset)
                 return;
 
             // Find row, col of mouse press
             int r = (e.Y - GridOffset) / CellLength;
             int c = (e.X - GridOffset) / CellLength;
 
-            // Invert selected box and all surrounding boxes
-            for (int i = r - 1; i <= r + 1; i++)
-                for (int j = c - 1; j <= c + 1; j++)
-                   if (i >= 0 && i < NumCellsOption && j >= 0 && j < NumCellsOption)
-                        grid[i, j] = !grid[i, j];
+            game.Move(r, c);
 
             // Redraw grid 
             this.Invalidate();
 
             // Check to see if puzzle has been solved 
-            if (PlayerWon())
+            if (game.IsGameOver())
             {
                 // Display winner dialog box 
                 MessageBox.Show(this, "Congratulations!  You've won!", "Lights Out!", 
@@ -126,32 +114,7 @@ namespace LightsOut
             }
 
         }
-
-        private bool PlayerWon()
-        {
-            bool result = false;
-            for (int r = 0; r < NumCellsOption; r++)
-                for (int c = 0; c < NumCellsOption; c++)
-                    result = grid[r, c] || result;
-            return !result;
-        }
-
-        private void resizeBoard(int size)
-        {
-            NumCellsOption = size;
-            grid = new bool[size, size];
-
-            // Turn entire grid on 
-            for (int r = 0; r < size; r++)
-                for (int c = 0; c < size; c++)
-                    grid[r, c] = true;
-
-            // Redraw grid
-            RandomizeGrid();
-
-        }
         
-
         private void NewToolStripMenuItem_Click(object sender, EventArgs e)
         {
             NewGameButton_Click(sender, e);
@@ -173,34 +136,32 @@ namespace LightsOut
             // Oncheck prev
             selectedSizeItem.Checked = false;
             selectedSizeItem = item;
-
-            // Check new
-            selectedSizeItem.Checked = true;
+            selectedSizeItem.Checked = true; // Check new
+            StartNewGame();
 
         }
 
 
         private void X3ToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            game.GridSize = 3;
             HandleSizeOptionClick((ToolStripMenuItem)sender);
-            resizeBoard(3);
         }
 
         private void X4ToolStripMenuItem1_Click(object sender, EventArgs e)
         {
+            game.GridSize = 4;
             HandleSizeOptionClick((ToolStripMenuItem)sender);
-            resizeBoard(4);
         }
 
         private void X5ToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            game.GridSize = 5;
             HandleSizeOptionClick((ToolStripMenuItem)sender);
-            resizeBoard(5);
         }
 
         private void MainForm_Resize(object sender, EventArgs e)
         {
-
             // Redraw grid 
             this.Invalidate();
 
